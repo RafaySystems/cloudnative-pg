@@ -94,9 +94,14 @@ func AddToManager(ctx context.Context, mgr manager.Manager, conf Config, maxConc
 	}
 
 	// Detect the available architectures
+	// Note: This may fail when using external managers if operator binaries are not in the expected location.
+	// We log a warning but continue, as architectures may be detected later or may not be needed.
 	if err = utils.DetectAvailableArchitectures(); err != nil {
-		setupLog.Error(err, "unable to detect the available instance's architectures")
-		return err
+		setupLog.Info("unable to detect the available instance's architectures, continuing anyway",
+			"error", err,
+			"note", "This is expected when using external managers without operator binaries in operator/manager_* path")
+		// Don't return error - allow the controller to continue
+		// The architecture detection is mainly for multi-arch support in the operator container
 	}
 
 	setupLog.Info("Kubernetes system metadata",
