@@ -22,8 +22,10 @@ package utils
 import (
 	"fmt"
 	"io"
+	"os"
 	"path/filepath"
 	"regexp"
+	"runtime"
 	"strconv"
 	"strings"
 	"sync"
@@ -229,6 +231,24 @@ func detectAvailableArchitectures(filepathGlob string) error {
 // DetectAvailableArchitectures detects the architectures available in the cluster
 func DetectAvailableArchitectures() error {
 	return detectAvailableArchitectures("operator/manager_*")
+}
+
+// RegisterCurrentArchitecture registers the currently running binary as an available
+// architecture. This is used when the operator/manager_* binaries are not present
+// (e.g. when using AddToManager with an external manager), ensuring that
+// GetAvailableArchitecture(runtime.GOARCH) succeeds at reconcile time.
+func RegisterCurrentArchitecture() {
+	goArch := runtime.GOARCH
+	for _, a := range availableArchitectures {
+		if a.GoArch == goArch {
+			return
+		}
+	}
+
+	execPath := filepath.Clean(os.Args[0])
+	arch := newAvailableArchitecture(goArch, execPath)
+	availableArchitectures = append(availableArchitectures, arch)
+	go arch.calculateHash()
 }
 
 // DetectOLM looks for the operators.coreos.com operators resource in the current

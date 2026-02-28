@@ -93,16 +93,17 @@ func AddToManager(ctx context.Context, mgr manager.Manager, conf Config, maxConc
 		return err
 	}
 
-	// Detect the available architectures
-	// Note: This may fail when using external managers if operator binaries are not in the expected location.
-	// We log a warning but continue, as architectures may be detected later or may not be needed.
+	// Detect the available architectures from operator/manager_* binaries (standard deployment).
+	// This may find nothing when using an external manager without those binaries present.
 	if err = utils.DetectAvailableArchitectures(); err != nil {
-		setupLog.Info("unable to detect the available instance's architectures, continuing anyway",
-			"error", err,
-			"note", "This is expected when using external managers without operator binaries in operator/manager_* path")
-		// Don't return error - allow the controller to continue
-		// The architecture detection is mainly for multi-arch support in the operator container
+		setupLog.Info("unable to detect architectures from operator/manager_* binaries, continuing",
+			"error", err)
 	}
+
+	// Always register the current binary's architecture so that
+	// GetAvailableArchitecture(runtime.GOARCH) never fails at reconcile time,
+	// even when the operator/manager_* files are absent.
+	utils.RegisterCurrentArchitecture()
 
 	setupLog.Info("Kubernetes system metadata",
 		"haveSCC", utils.HaveSecurityContextConstraints(),
